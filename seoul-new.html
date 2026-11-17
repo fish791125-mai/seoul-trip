@@ -3,44 +3,221 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Seoul, softly.</title>
 <style>
-body {
-  margin: 0;
-  background: #fbf3f1;
-  color: #604d50;
-  font-family: Arial, sans-serif;
-}
-main {
-  max-width: 500px;
-  margin: auto;
-  padding: 35px 20px;
-}
-h1 {
-  color: #c78390;
-  font-size: 42px;
-}
-.card {
-  background: white;
-  padding: 22px;
-  margin-top: 18px;
-  border-radius: 20px;
-}
+*{box-sizing:border-box}
+body{margin:0;background:#fbf3f1;color:#604d50;font-family:-apple-system,"Noto Sans TC",sans-serif}
+main{max-width:520px;margin:auto;padding:28px 18px 110px}
+h1{font:44px Georgia,serif;color:#bc7b89;margin:10px 0}
+h2{font-size:21px}
+h3{font-size:16px}
+small{color:#a48e92}
+.card{background:white;border-radius:20px;padding:18px;margin:12px 0;box-shadow:0 3px 14px #b9959515}
+.hero{background:linear-gradient(120deg,#edcdd2,#f9e7df);border-radius:22px;padding:26px;margin-top:22px}
+.hero b{font:28px Georgia,serif}
+button{cursor:pointer;font:inherit}
+.btn{background:#c78390;color:white;border:0;border-radius:12px;padding:12px 16px}
+.mini{background:#f8edef;color:#ac7480;border:0;border-radius:10px;padding:8px}
+input{font:inherit}
+.field{display:block;width:100%;padding:12px;margin:9px 0;border:1px solid #eadbdd;border-radius:12px;background:white}
+.row{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.days{display:flex;gap:7px;overflow:auto}
+.days button{border:1px solid #e8d6da;background:white;border-radius:12px;padding:10px}
+.days .on{background:#c78390;color:white}
+nav{position:fixed;bottom:0;left:0;right:0;background:white;display:flex;justify-content:center;border-top:1px solid #f1e4e7;padding:8px 0 max(8px,env(safe-area-inset-bottom))}
+nav button{width:20%;max-width:104px;background:none;border:0;color:#a99a9c;font-size:12px;padding:6px 0}
+nav button.on{color:#c78390;font-weight:bold}
+nav b{display:block;font-size:22px}
+a{color:#b77985}
+.photo{width:75px;height:75px;object-fit:cover;border-radius:12px}
+.notice{font-size:12px;color:#a47c84;line-height:1.7}
 </style>
 </head>
 <body>
 <main>
-  <h1>Seoul, softly. ♡</h1>
-  <p>11.20 — 11.24 · 首爾冬日手帖</p>
-  <div class="card">
-    <h2>歡迎來到首爾 ♡</h2>
-    <p>我們的五天四夜自由行</p>
-  </div>
-  <div class="card">
-    🗓️ 行程　🛍️ 購物　🍜 美食　💰 旅費
-  </div>
+<small>OUR LITTLE SEOUL DIARY · 2026</small>
+<h1>Seoul, softly. ♡</h1>
+<small>11.20 — 11.24 · 首爾冬日手帖</small>
+<div id="app"></div>
+<p class="notice">目前是個人測試版，資料儲存在這台手機的瀏覽器，尚未啟用四人雲端同步。</p>
 </main>
+<nav id="nav"></nav>
+<script>
+const initial={
+day:0,rate:0.024,
+trip:[
+[0,"15:40","桃園機場出發"],
+[0,"19:15","抵達仁川機場"],
+[0,"20:55","仁川 T2 機場快線"],
+[0,"晚上","首爾站樂天超市"],
+[1,"上午","首爾大公園纜車"],
+[1,"午餐","醬蟹"],
+[1,"下午","蠶室樂天"],
+[2,"09:00","景福宮韓服"],
+[2,"午餐","新村辣奶油排骨"],
+[2,"下午","弘大逛街"],
+[3,"上午","廣藏市場買棉被"],
+[3,"午餐","三清燒肉乙支店"],
+[3,"18:30","特麗芙醫美"],
+[3,"晚上","明洞逛街"],
+[4,"07:20","首爾站機場快線"],
+[4,"12:30","仁川機場返台"]
+].map(x=>({day:x[0],time:x[1],name:x[2]})),
+shop:[
+["BIOHEAL BOH 雙面膜","Olive Young"],
+["膠原蛋白噴霧","Olive Young"],
+["celimax 視黃醛微針精華","Olive Young"],
+["ROUND LAB 防曬","Olive Young"],
+["ROUND LAB 白樺樹保濕面霜","Olive Young"],
+["高露潔美白牙膏","Olive Young"],
+["棉被","廣藏市場"],
+["文具","弘大"],
+["睡衣","弘大"]
+].map(x=>({name:x[0],store:x[1],price:0,done:false})),
+food:[
+{name:"醬蟹",note:"11/21"},
+{name:"新村辣奶油排骨",note:"11/22"},
+{name:"三清燒肉乙支店",note:"11/23"}
+],
+cost:[]
+};
+const key="seoul-softly-v2";
+let db;
+try{db=JSON.parse(localStorage.getItem(key))||initial}
+catch(e){db=initial}
+let page="home";
+const el=id=>document.getElementById(id);
+const safe=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const save=()=>{try{localStorage.setItem(key,JSON.stringify(db))}catch(e){alert("儲存空間不足，請減少照片")}};
+const tw=n=>Math.round(Number(n||0)*db.rate).toLocaleString();
+const map=n=>"https://www.google.com/maps/search/?api=1&query="+encodeURIComponent(n+" 首爾");
+function go(p){page=p;render();scrollTo(0,0)}
+function remove(k,i){
+if(confirm("確定刪除？")){db[k].splice(i,1);save();render()}
+}
+function edit(k,i){
+let x=db[k][i];
+let n=prompt("名稱",x.name);
+if(n===null)return;
+x.name=n;
+if(k==="trip"){
+let t=prompt("時間",x.time);
+if(t!==null)x.time=t;
+}
+if(k==="shop"){
+let s=prompt("購買地點",x.store);
+if(s!==null)x.store=s;
+let p=prompt("韓幣價格",x.price);
+if(p!==null)x.price=Number(p)||0;
+}
+if(k==="food"){
+let n=prompt("備註",x.note);
+if(n!==null)x.note=n;
+}
+if(k==="cost"){
+let n=prompt("韓幣金額",x.amount);
+if(n!==null)x.amount=Number(n)||0;
+}
+save();render();
+}
+function add(k){
+let name=el("name").value.trim();
+if(!name)return alert("請輸入名稱");
+if(k==="trip")db.trip.push({
+day:db.day,time:el("time").value,name
+});
+if(k==="shop")db.shop.push({
+name,store:el("store").value||"其他",
+price:Number(el("price").value)||0,done:false
+});
+if(k==="food")db.food.push({
+name,note:el("note").value
+});
+if(k==="cost")db.cost.push({
+name,amount:Number(el("price").value)||0
+});
+save();render();
+}
+function photo(e,i){
+let file=e.target.files[0];
+if(!file)return;
+let url=URL.createObjectURL(file);
+let img=new Image();
+img.onload=()=>{
+let c=document.createElement("canvas");
+let scale=Math.min(1,500/img.width);
+c.width=Math.round(img.width*scale);
+c.height=Math.round(img.height*scale);
+c.getContext("2d").drawImage(img,0,0,c.width,c.height);
+db.shop[i].image=c.toDataURL("image/jpeg",0.45);
+URL.revokeObjectURL(url);
+save();render();
+};
+img.onerror=()=>{URL.revokeObjectURL(url);alert("照片讀取失敗")};
+img.src=url;
+}
+function render(){
+const menu=[
+["home","⌂","首頁"],["trip","▦","行程"],
+["shop","♡","購物"],["food","♨","美食"],
+["cost","₩","旅費"]
+];
+el("nav").innerHTML=menu.map(x=>
+`<button class="${page===x[0]?"on":""}" onclick="go('${x[0]}')"><b>${x[1]}</b>${x[2]}</button>`
+).join("");
+let h="";
+if(page==="home"){
+h=`<div class="hero"><b>Little moments,<br>lovely memories.</b><p>五天四夜 · 首爾自由行</p></div>
+<h2>我們的首爾旅行 ♡</h2>
+<div class="card">✈️ 11/20 桃園出發 · 11/24 回台</div>
+<div class="card">🗓️ ${db.trip.length} 個行程</div>
+<div class="card">🛍️ ${db.shop.filter(x=>x.done).length} / ${db.shop.length} 項已購買</div>
+<div class="card">💰 已記帳 NT$ ${tw(db.cost.reduce((s,x)=>s+Number(x.amount||0),0))}</div>
+<button class="btn" onclick="go('trip')">查看每日行程 →</button>`;
+}
+if(page==="trip"){
+h="<h2>每日行程</h2><div class='days'>";
+["20 五","21 六","22 日","23 一","24 二"].forEach((x,i)=>{
+h+=`<button class="${db.day===i?"on":""}" onclick="db.day=${i};save();render()">11/${x}</button>`;
+});
+h+="</div>";
+db.trip.forEach((x,i)=>{
+if(x.day!==db.day)return;
+h+=`<div class="card"><small>${safe(x.time)}</small><h3>${safe(x.name)}</h3><div class="actions"><a href="${map(x.name)}" target="_blank">📍 地圖</a><button class="mini" onclick="edit('trip',${i})">編輯</button><button class="mini" onclick="remove('trip',${i})">刪除</button></div></div>`;
+});
+h+=`<h2>新增行程</h2><input class="field" id="time" placeholder="時間"><input class="field" id="name" placeholder="地點或活動"><button class="btn" onclick="add('trip')">＋ 新增</button>`;
+}
+if(page==="shop"){
+h=`<h2>購物願望清單 ♡</h2><div class="card">韓元換算台幣匯率<input class="field" type="number" step=".001" value="${db.rate}" onchange="db.rate=Number(this.value)||0.024;save();render()"></div>`;
+[...new Set(db.shop.map(x=>x.store))].forEach(store=>{
+h+=`<h2>${safe(store)}</h2>`;
+db.shop.forEach((x,i)=>{
+if(x.store!==store)return;
+h+=`<div class="card"><div class="row"><input type="checkbox" ${x.done?"checked":""} onchange="db.shop[${i}].done=this.checked;save();render()">${x.image?`<img class="photo" src="${x.image}">`:""}<div style="flex:1"><b>${safe(x.name)}</b><br><small>₩ ${Number(x.price||0).toLocaleString()} · NT$ ${tw(x.price)}</small></div></div><div class="actions"><button class="mini" onclick="edit('shop',${i})">編輯價格</button><label class="mini">📷 加照片<input type="file" accept="image/*" style="display:none" onchange="photo(event,${i})"></label><button class="mini" onclick="remove('shop',${i})">刪除</button></div></div>`;
+});
+});
+h+=`<h2>新增商品</h2><input class="field" id="name" placeholder="商品名稱"><input class="field" id="store" placeholder="購買地點"><input class="field" id="price" type="number" placeholder="韓幣價格"><button class="btn" onclick="add('shop')">＋ 加入清單</button>`;
+}
+if(page==="food"){
+h="<h2>首爾美食 ♡</h2>";
+db.food.forEach((x,i)=>{
+h+=`<div class="card"><h3>${safe(x.name)}</h3><small>${safe(x.note)}</small><div class="actions"><a href="${map(x.name)}" target="_blank">📍 地圖</a><button class="mini" onclick="edit('food',${i})">編輯</button><button class="mini" onclick="remove('food',${i})">刪除</button></div></div>`;
+});
+h+=`<h2>新增餐廳</h2><input class="field" id="name" placeholder="餐廳名稱"><input class="field" id="note" placeholder="備註"><button class="btn" onclick="add('food')">＋ 新增</button>`;
+}
+if(page==="cost"){
+let sum=db.cost.reduce((s,x)=>s+Number(x.amount||0),0);
+h=`<h2>旅費記帳</h2><div class="hero"><small>總花費</small><h2>₩ ${sum.toLocaleString()}</h2>約 NT$ ${tw(sum)}</div>`;
+db.cost.forEach((x,i)=>{
+h+=`<div class="card"><div class="row"><b>${safe(x.name)}</b><span>₩ ${Number(x.amount).toLocaleString()}</span></div><small>約 NT$ ${tw(x.amount)}</small><div class="actions"><button class="mini" onclick="edit('cost',${i})">編輯</button><button class="mini" onclick="remove('cost',${i})">刪除</button></div></div>`;
+});
+h+=`<h2>新增支出</h2><input class="field" id="name" placeholder="消費項目"><input class="field" id="price" type="number" placeholder="韓幣金額"><button class="btn" onclick="add('cost')">＋ 記帳</button>`;
+}
+el("app").innerHTML=h;
+}
+render();
+</script>
 </body>
 </html>
-
